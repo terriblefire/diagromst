@@ -1,14 +1,14 @@
-	;; w00t a new operating system.
-        ;; Based on DiagROM
+;; w00t a new operating system.
+;; Based on DiagROM
 
 ; A6 is ONLY to be used as a memorypointer to variables etc. so never SET a6 in the code.
 
 	include "settings.i"
-	include "macros.i"
 	include "resources.i"
-
+	include "macros.i"
+	include "memory.i"
+	
 	org	rom_base
-
 START:	
 	; Lets start the code..  with a jump
 TheStart:
@@ -45,8 +45,6 @@ strstop:
 	EVEN
 
 Begin:	
-; Code in ROM mode
-	
 	move.w  #$2700,sr		 ; Disable interrupts
 	move.w	#$f00,color0	 ; red screen
 	move.b  #$0a,(memconf)	 ; set hw to 2 banks by 2 mb (reg 0xffff8001 - memorycontroller) 
@@ -54,7 +52,7 @@ Begin:
 	lea		$400,SP		 	 ; Set the stack. BUT!!! do not use it yet. we need to check chipmem first!
 	InitVideo $10000
 
-	move.w	#$ff0,color0		; yellow screen
+	move.w	#$ff0,color0	 ; yellow screen
 
 	;; set up white
 	SETALLCOLORS $fff
@@ -207,6 +205,7 @@ udsldsodd:
 	KPRINTSLN ' Done.'
 
 	POSTDetectChipmem
+
 	; At EXIT registers that are interesting:
 	; D0 = Number of usable 32Kb blocks
 	; D3 = First usable address
@@ -217,21 +216,29 @@ udsldsodd:
 	;					; A6 from now on points to where diagroms workspace begins. do NOT change A6
 	;					; A6 is from now on STATIC
 
-
-
 	PAROUT #$fd
 	KPRINTSLN	"- Parallel Code $fb - Memorydetection done"
 
-	; Check if we have enough ram 
+	; POSTDetectFastmem
+
+	;	memdetection done
+	
+	;	d0				; total chipmem *32
+	;	d1				; total fastmem *64
+	;	a0				; Start of Fastmemblock
+	;	a1				; end of fastmemblock
+	;	a4				; Startupbits (pressed mousebuttons etc)
+	;	a7				; Start of chipmem
 
 	
-	; Copy the workspace
 
+	; Copy the workspace
 
 	; Start the meu
 
-stop_:
-	jmp stop_
+
+_halt:
+	jmp _halt
 
 BusError:
 	SHOWERROR 'Bus Error Detected'
@@ -309,45 +316,10 @@ RTEcode:
 
 ; STATIC Data located here.  (HEY!! it IS in ROM!)
 
-	dc.l	$aaaaaaaa,$55555555,$f0f0f0f0,$0f0f0f0f,0,0
-MEMCheckPattern:
-	dc.l	$aaaaaaaa,$55555555,$f0f0f0f0,$0f0f0f0f,$ffffffff,0,0
-MEMCheckPatternFast:
-	dc.l	$aaaaaaaa,$55555555,$f0f0f0f0,$0f0f0f0f,0,0
-
 RomFont:
 	incbin	TopazFont.bin
 EndRomFont:
 	EVEN
-
-iert:       DC.B      $06,$06,$08,$08
-iprt:       DC.B      $0a,$0a,$0c,$0c
-isrt:       DC.B      $0e,$0e,$10,$10
-imrt:       DC.B      $12,$12,$14,$14
-imrmt:      DC.B      $df,$fe,$df,$ef
-tcrtab:     DC.B      $18,$1a,$1c,$1c
-tcrmsk:     DC.B      $00,$00,$8f,$f8
-tdrtab:     DC.B      $1e,$20,$22,$24
-
-
-ByteHexTable:
-	dc.b	"000102030405060708090A0B0C0D0E0F"
-	dc.b	"101112131415161718191A1B1C1D1E1F"
-	dc.b	"202122232425262728292A2B2C2D2E2F"
-	dc.b	"303132333435363738393A3B3C3D3E3F"
-	dc.b	"404142434445464748494A4B4C4D4E4F"
-	dc.b	"505152535455565758595A5B5C5D5E5F"
-	dc.b	"606162636465666768696A6B6C6D6E6F"
-	dc.b	"707172737475767778797A7B7C7D7E7F"
-	dc.b	"808182838485868788898A8B8C8D8E8F"
-	dc.b	"909192939495969798999A9B9C9D9E9F"
-	dc.b	"A0A1A2A3A4A5A6A7A8A9AAABACADAEAF"
-	dc.b	"B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF"
-	dc.b	"C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF"
-	dc.b	"D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF"
-	dc.b	"E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"
-	dc.b	"F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF"
-	dc.b	0
 
 InitSerial:
 	dc.b	1,2,4,8,16,32,64,128,240,15,170,85,$a,$d,$a,$d
@@ -376,13 +348,13 @@ Black:
 ; this part of memory. so you have to set any default values in the code or data will be random.
 
 Variables:
-	blk.b	8192,0			; Just reserve memory for "Stack" not used in nonrom mode
+	blk.b	8192,0	; Just reserve memory for "Stack" not used in nonrom mode
 Endstack:
 	EVEN
 V:
-	dc.l	0			; Just a string to mark first part of data
+	dc.l	0	; Just a string to mark first part of data
 StackSize:
-	dc.l	0			; Will contain size of the stack	
+	dc.l	0	; Will contain size of the stack	
 StartAddress:
 	dc.l	0
 HLINE:
@@ -423,7 +395,6 @@ EndBpl1:
 
 EndData:
 	dc.l	0
-
 
 BITTEREND:
 	blk.b	$40000-(BITTEREND-START)-16,0		; Crapdata that needs to be here

@@ -1,13 +1,15 @@
-.PHONY: DiagROM
+.PHONY: DiagROM main.asm
 VASM=vasmm68k_mot 
 
 all: DiagROM
 #compare: DiagROM
 #	cmp -l DiagROM.orig DiagROM.new | gawk '{printf "%08X %02X %02X\n", $$1, strtonum(0$$2), strtonum(0$$3)}'	
-DiagROM: split date
-	$(VASM) -m68882 -no-opt -Fbin $(@).asm -o $(@).rom -L $(@).lst
+DiagROM: split date main.asm
+	$(VASM) -m68882 -opt-fconst -nowarn=62 -Fbin $(@).asm -o $(@).rom -L $(@).lst
 	dd conv=swab if=$(@).rom of=16bit.bin
 	./split 16bit.bin 
+main.asm:
+	vbccm68k -c99 -sc -sd main.c -o=main.asm -Iinclude
 split: split.o
 	$(CXX) -o split split.o
 split.o: split.cpp

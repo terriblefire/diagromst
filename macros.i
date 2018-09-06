@@ -118,17 +118,19 @@ KPRINTHEX8: MACRO
 	SENDSERIAL d2
 	move.b	(a0)+,d2
 	SENDSERIAL d2
-ENDM
 
+	; Resources
+	ByteHexTableResource
+
+ENDM
 
 KPRINTHEX16: MACRO
-   move.w  \1,d4
-   lsr     #8,d4
-   KPRINTHEX8 d4
-   move.w  \1,d4
-   KPRINTHEX8 d4
+   move.l  \1,d6
+   asr     #8,\1
+   KPRINTHEX8 \1
+   move.l  d6,\1
+   KPRINTHEX8 \1
 ENDM
-
 
 KPRINTHEX32:MACRO
 	swap \1
@@ -238,6 +240,9 @@ InitMFP: MACRO
 	move.l    #$880105,d0
     movep.l   d0,$26(a0)                ; inits scr,ucr,rsr,tsr
 
+	;; mfp table resource is only defined once. 
+	MFPTableResource
+
 ENDM
 
 InitVideo: MACRO
@@ -313,205 +318,3 @@ TestMemWord: MACRO
 .done:
 ENDM
 
-POSTDetectChipmem: MACRO
-\@:
-	lea	$400,a6				; Lets scan memory, start at $400
-	move.l	#$33333333,(a6)	; Write a number that is NOT in the memcheck table. for shadowcheck
-	clr.l	d0			
-	clr.l	d3				; if d3 is not null, it contains first memaddr found
-	
-	KNEWLINE
-
-.detectloop:
-	move.l	(a6),d5				; Do a backup of content
-	lea	MEMCheckPatternFast,a5		; Load list of data to test
-	bclr	#31,d0
-.memloop:
-
-	SENDSERIAL #$d	
-	KPRINTS 'Addr $'
-
-	move.l	a6,d1
-	KPRINTHEX32 d1
-
-	move.l	(a5),(a6)			; Write data to memory
-	move.l	(a5),d1
-	asl.l	#4,d1
-	and.w	#$0f0,d1
-	move.w	d1,color0			; Write data to screen as green only.
-
-	move.l	(a6),d4				; Read data from memory
-	cmp.l	(a5),d4				; Check if written data is the same as the read data.
-	beq	.ok				; YES it is OK
-
-	cmp.l	#0,d3				; Check if d3 is 0, in that case we havent found any memory
-						; and user might want to see whats wrong. if we had. we are simply out of mem
-	bne	.faildone
-
-	KPRINTS 'Write:'
-
-	move.l	a6,d1				; Print address to check
-
-	move.l	(a5),d1
-	KPRINTHEX32 d1
-
-	KPRINTS 'Read:'
-
-	move.l	d4,d1
-	KPRINTHEX32 d1
-	KPRINTSLN '   FAILED'
-
-.faildone:
-	bset	#31,d0				; set bit 31 in d0 to tell we had an error
-	move.w	#$f00,color0
-.ok:
-	cmp.l	#$400,a6
-	beq	.yes400				; if we are checking address 400, skip this
-	move.l	$400,d4
-	beq	.shadow				; ok, we are not checking address 400, BUT we had same data there. meaning
-						; we have a shadow. so exit
-
-.yes400:
-	TOGGLEPWRLED
-
-	cmp.l	#0,(a5)+			; Was last longword tested null? if not, repeat
-	bne	.memloop
-
-	btst	#31,d0
-	bne	.fail				; did we have failed memory
-
-	cmp.l	#0,d3				; check if this is the first block of good memory
-	bne	.notfirst
-	move.l	a6,d3				; Store that this was the first sucessful memory
-
-.notfirst:
-	add.w	#1,d0				; Add 1 to mark a sucessful block
-
-	KPRINTS '   OK'
-	KPRINTS '  Number of 32K blocks found: $'
-
-	move.l	d0,d1
-	KPRINTHEX8 d1
-	bra .longdone
-.fail:						; We had a failure
-
-	cmp.l	#0,d3				; Check if d3 is 0, in that case we havent found any memory yet
-	beq	.longdone
-						; ok we had memory, so this is the endblock.
-	bra	.finished			; lets stop all check. we have found it all.
-
-.longdone:
-	move.l	d5,(a6)				; Restore backupped data
-
-	add.l	#32768,a6			; Add 32k to a6
-	cmp.l	#$200000,a6			; have we scanned more then 2MB of data, exit
-	bhi	.finished
-	bra	.detectloop			; Do one more turn.
-
-.shadow:
-	move.l	#"SHDW",(a6)			; to test that we REALLY have a shadowram. write a string
-	cmp.l	#"SHDW",$400			; and check it at $400,  if it is there aswell SHADOW
-	bne	.yes400				; go on checking ram. we did not have shadow
-
-	KNEWLINE
-	KPRINTSLN 'Chipmem Shadowram detected, guess there is no more chipmem, stopping here'
-
-.finished:
-
-	bclr	#31,d0				; Clear "the errorbit"
-	cmp.l	#0,d0				; check if we had no chipmem
-	beq	.nochipatall
-
-	KNEWLINE
-	KPRINTS 'Startaddr: $'
-
-	move.l	d3,a7				; Store start of chipmem to a7
-	move.l	d3,d1
-	KPRINTHEX32 d1
-
-	KPRINTS ' Endaddr: $'
-
-	sub.l	#$400,a6
-	move.l	a6,d1
-	KPRINTHEX32 d1
-	KNEWLINE
-	bra	.exit
-
-.nochipatall:
-
-	KPRINTSLN 'NO Chipmem detected'
-
-.exit:
-
-ENDM
-
-MEMCheck: MACRO
-\@:
-.memchk:     adda.l    d1,a0                     ; a0 -> memory to check
-            clr.w     d0                        ; zap pattern seed
-            lea       $1f8(a0),a1               ; a1 -> ending address
-.memchk1:    cmp.w     (a0)+,d0                  ; match?
-            bne.s     .memchkr                   ; (no -- return NE)
-            add.w     #$fa54,d0                 ; yes -- bump pattern
-            cmpa.l    a0,a1                     ; matched entire pattern?
-            bne.s     .memchk1                   ; (no)
-.memchkr:   
-
-ENDM
-
-MMUConfigure: MACRO
-
-* First we try to configure the memory controller
-
-            clr.w     d6
-            move.b    #$a,(memconf).w			; default: setup controller for 2Mb/2Mb
-
-            movea.w   #$8,a0
-            lea       ($200008).l,a1			; + 2Mb
-            clr.w     d0
-chkpatloop: move.w    d0,(a0)+					; fill 512-8 bytes with a test pattern
-            move.w    d0,(a1)+
-            add.w     #$fa54,d0
-            cmpa.w    #$200,a0
-            bne.s     chkpatloop
-
-            move.b    #90,(v_bas_l).w			; wrote low byte of video address
-            tst.b     (v_bas_m).w				; touch the middle byte (this should reset the low byte)
-            move.b    (v_bas_l).w,d0
-            cmp.b     #90,d0					; low byte not reset?
-            bne.s     chkmem1
-            clr.b     (v_bas_l).w				; try a different low byte value
-            tst.w     (palette).w				; touch the color palette
-            tst.b     (v_bas_l).w				; low byte changed?
-            bne.s     chkmem1
-            move.l    #$40000,d7				; 256Kb offset
-            bra.s     chkmem1b
-chkmem1:    move.l    #$200,d7					; 512 byte offset
-chkmem1b:   move.l    #$200000,d1				; 2Mb = maximum size per bank
-
-chkmemloop: lsr.w     #2,d6						; shift memory configuration down by a bank (bank 1 is in bits 0..1, bank 0 is in bits 2..3)
-
-            movea.l   d7,a0						; + 512/256Kb bytes
-            addq.l    #8,a0
-            lea       chkmem3(pc),a4
-            MEMCheck
-chkmem3:    beq.s     chkmem7					; bank is not working =>
-
-            movea.l   d7,a0
-            adda.l    d7,a0						; + 1024/512Kb byte
-            addq.l    #8,a0
-            lea       chkmem4(pc),a4
-            MEMCheck
-chkmem4:    beq.s     chkmem6					; bank has 512Kb of memory =>
-
-            movea.w   #$8,a0					; + 0 bytes
-            lea       chkmem5(pc),a4
-            MEMCheck
-chkmem5:    bne.s     chkmem7					; bank is empty =>
-
-            addq.w    #4,d6						; 4+4 = 1000 2Mb bank size
-chkmem6:    addq.w    #4,d6						; 4   = 0100 512Kb bank size
-chkmem7:    sub.l     #$200000,d1				; - 2Mb
-            beq.s     chkmemloop
-            move.b    d6,(memconf).w			; set memory configuration
-ENDM
