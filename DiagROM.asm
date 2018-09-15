@@ -7206,810 +7206,6 @@ Setup:
 	bsr	WaitButton
 	bra	MainMenu
 
-
-;------------------------------------------------------------------------------------------
-
-OtherTest:
-	bsr	InitScreen
-	move.w	#7,MenuNumber-V(a6)
-	move.b	#1,PrintMenuFlag-V(a6)
-	bra	MainLoop
-
-RTCTest:
-	bsr	ClearScreen
-
-	bsr	DevPrint
-	clr.l	RTCold-V(a6)
-
-.loopa:
-	move.b	#8,$dc0037
-	lea	$dc0003,a1
-	clr.l	d0
-	move.b	(a1),d0
-	asl.l	#8,d0
-	add.b	1(a1),d0
-	asl.l	#8,d0
-	add.b	2(a1),d0
-	asl.l	#8,d0
-	add.b	3(a1),d0			; Now we have read a longword. 68k friendly from odd address
-
-	cmp.l	RTCold-V(a6),d0			; Check if first byte have changed.
-	beq	.nochange
-	move.l	d0,RTCold-V(a6)
-
-	clr.l	d0
-	clr.l	d1
-	bsr	SetPos
-
-	lea	RTCByteTxt,a0
-	lea	RTCString-V(a6),a2
-	move.l	#3,d1
-	bsr	Print
-
-	move.l	#13,d7
-.loop:
-	move.b	#8,$dc0037
-	clr.l	d0
-	move.b	(a1),d0
-	move.b	d0,d1
-	and.b	#$f,d1				;Strip away top 4 bits
-	move.b	d1,(a2)+
-	bsr	binhexbyte
-	move.l	#2,d1
-	bsr	Print
-	add.l	#4,a1
-	dbf	d7,.loop
-
-	lea	NewLineTxt,a0
-	bsr	Print
-	lea	NewLineTxt,a0
-	bsr	Print
-
-
-	lea	RTCBitTxt,a0
-	move.l	#3,d1
-	bsr	Print
-
-	move.b	#8,$dc0037
-
-	lea	RTCString-V(a6),a1
-	move.l	#13,d7
-.loop1:
-	clr.l	d0
-	move.b	(a1)+,d0				;aaa
-	bsr	binstringbyte
-	move.l	#2,d1
-	bsr	Print
-	lea	SpaceTxt,a0
-	bsr	Print
-	cmp.b	#7,d7
-	bne	.nope
-	lea	NewLineTxt,a0
-	bsr	Print
-.nope:
-	dbf	d7,.loop1
-
-	lea	NewLineTxt,a0
-	bsr	Print
-	lea	NewLineTxt,a0
-	bsr	Print
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	
-
-	bsr	ricoh
-	bsr	oki
-
-
-.nochange:
-	bsr	GetInput
-	cmp.b	#1,BUTTON-V(a6)
-	bne	.loopa
-
-;	bsr	WaitButton
-	bra	OtherTest
-
-
-ricoh:						; RICOH chipset detected.
-	lea	RTCRicoh,a0
-	move.l	#6,d1
-	bsr	Print
-	move.l	#2,d1
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	lea	RTCDay,a1
-	clr.l	d0
-	move.b	6(a0),d0
-	mulu	#10,d0
-	move.l	a1,a0
-	add.l	d0,a0
-	bsr	Print
-
-	move.b	#" ",d0
-	bsr	PrintChar
-
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	clr.l	d0
-	move.b	12(a0),d0
-	mulu	#10,d0
-	add.b	11(a0),d0			; We have now the year, 2 digits
-
-	cmp.b	#78,d0				; Check for 78
-	bge	.r19				; more or equal to 78. we are in 19xx
-
-	add.l	#2000,d0
-	bra	.rno19
-.r19:
-	add.l	#1900,d0
-	move.l	#$f00,color0
-
-.rno19
-	bsr	bindec
-	bsr	Print
-						; Now year is printed
-	move.b	#"-",d0
-	bsr	PrintChar
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-
-	clr.l	d0
-	move.b	10(a0),d0
-	mulu	#10,d0
-	add.b	9(a0),d0			; We have now the month
-	sub.l	#1,d0
-	mulu	#4,d0				; Multiply with 4 to get where string start
-
-	lea	RTCMonth,a5
-	move.l	a5,a0
-	add.l	d0,a0
-	bsr	Print
-
-	move.b	#"-",d0
-	bsr	PrintChar
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	clr.l	d0
-	
-	move.b	8(a0),d0
-	add.b	#$30,d0
-	bsr	PrintChar
-
-	move.b	7(a0),d0
-	add.b	#$30,d0
-	bsr	PrintChar
-
-	move.b	#" ",d0
-	bsr	PrintChar
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	add.l	#6,a0
-	move.l	#5,d7
-	clr.l	d6				; Clear d6 as it is a counter when to print a :
-.rloop:
-	cmp.b	#2,d6				; time to print : ?
-	bne	.rnocolon
-	move.b	#":",d0
-	bsr	PrintChar
-	clr.l	d6
-.rnocolon:
-	add.l	#1,d6
-
-	move.b	-(a0),d0
-	add.b	#$30,d0
-	bsr	PrintChar
-	dbf	d7,.rloop
-
-	lea	NewLineTxt,a0
-	bsr	Print
-	lea	NewLineTxt,a0
-	bsr	Print
-	rts
-
-oki:
-	lea	RTCOKI,a0
-	move.l	#6,d1
-	bsr	Print
-	move.l	#2,d1
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	lea	RTCDay,a1
-	clr.l	d0
-	move.b	6(a0),d0
-	mulu	#10,d0
-	move.l	a1,a0
-	add.l	d0,a0
-	bsr	Print
-
-	move.b	#" ",d0
-	bsr	PrintChar
-
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	clr.l	d0
-	move.b	11(a0),d0
-	mulu	#10,d0
-	add.b	10(a0),d0			; We have now the year, 2 digits
-
-	add.l	#1900,d0
-	bsr	bindec
-	move.l	#2,d1
-	bsr	Print
-
-
-	move.b	#"-",d0
-	bsr	PrintChar
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-
-	clr.l	d0
-	move.b	9(a0),d0
-	mulu	#10,d0
-	add.b	8(a0),d0			; We have now the month
-	sub.l	#1,d0
-
-	cmp.b	#11,d0
-	blt	.okinoover
-	move.l	#12,d0
-.okinoover:
-	mulu	#4,d0				; Multiply with 4 to get where string start
-
-
-	lea	RTCMonth,a5
-	move.l	a5,a0
-	add.l	d0,a0
-	bsr	Print
-
-	move.b	#"-",d0
-	bsr	PrintChar
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	clr.l	d0
-	
-	move.b	7(a0),d0
-	add.b	#$30,d0
-	bsr	PrintChar
-
-	move.b	6(a0),d0
-	add.b	#$30,d0
-	bsr	PrintChar
-
-	move.b	#" ",d0
-	bsr	PrintChar
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	clr.l	d0
-	clr.l	d7				; if d7 is not 0, we are in PM
-	move.b	5(a0),d0
-	btst	#2,d0
-	beq	.ono
-	move.b	#1,d7				; Set that we are in PM
-	bclr	#2,d0
-
-.ono:
-	mulu	#10,d0
-	add.b	4(a0),d0
-	cmp.b	#0,d7
-	beq.w	.ono1
-	sub.b	#2,d0
-
-	cmp.b	#254,d0
-	beq.b	.oki8
-	cmp.b	#255,d0
-	beq.b	.oki9
-	bra	.ono2
-.oki8:
-	move.b	#8,d0
-	bra.s	.ono2
-.oki9:
-	move.b	#9,d0
-	bra.w	.ono2
-.ono2:
-	add.b	#12,d0
-.ono1:
-	cmp.b	#9,d0
-	bgt	.okilow
-	PUSH
-	move.b	#"0",d0
-	bsr	PrintChar
-	POP
-.okilow:
-	bsr	bindec
-	bsr	Print
-
-	move.b	#":",d0
-	bsr	PrintChar
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	move.b	3(a0),d0
-	add.b	#"0",d0
-	bsr	PrintChar
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	move.b	2(a0),d0
-	add.b	#"0",d0
-	bsr	PrintChar
-	move.b	#":",d0
-	bsr	PrintChar
-
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	move.b	1(a0),d0
-	add.b	#"0",d0
-	bsr	PrintChar
-	lea	RTCString-V(a6),a0		; load a0 to string from RTC
-	move.b	(a0),d0
-	add.b	#"0",d0
-	bsr	PrintChar
-	rts
-
-;------------------------------------------------------------------------------------------
-
-AutoConfig:					; Do Autoconfigmagic
-	bsr	ClearScreen
-	lea	AutoConfTxt,a0
-	move.l	#4,d1
-	bsr	Print
-	move.b	#0,AutoConfMode-V(a6)		; Set that we want a fast autoconfig mode
-	bsr	zorro_tests
-
-	lea	AnyKeyMouseTxt,a0
-	move.l	#3,d1
-	bsr	Print
-	bsr	WaitButton
-	bra	MainMenu
-
-AutoConfigDetail:				; Do Autoconfigmagic
-	bsr	ClearScreen
-	lea	AutoConfTxt,a0
-	move.l	#4,d1
-	bsr	Print
-	move.b	#1,AutoConfMode-V(a6)		; Set that we want a more detailed autoconfig mode
-	
-	bsr	zorro_tests
-
-	lea	AnyKeyMouseTxt,a0
-	move.l	#3,d1
-	bsr	Print
-	bsr	WaitButton
-	bra	MainMenu
-
-
-; Autoconfigcode.  based much Terriblefires code, Added support for several cards
-; and more information.
-
-E_EXPANSIONBASE		EQU	$e80000
-EZ3_EXPANSIONBASE	EQU	$ff000000
-
-ERT_TYPEMASK		EQU	$c0	;Bits 7-6
-ERT_TYPEBIT		EQU	6
-ERT_TYPESIZE		EQU	2
-ERT_NEWBOARD		EQU	$c0
-ERT_ZORROII		EQU	ERT_NEWBOARD
-ERT_ZORROIII		EQU	$80
-
-; ** other bits defined in er_Type **
-; ** er_Type field memory size bits ** 
-ERT_MEMMASK		EQU	$07	;Bits 2-0
-ERT_MEMBIT		EQU	0
-ERT_MEMSIZE		EQU	3
-	
-			rsreset
-er_Type 		rs.b	1;Board type, size and flags
-er_Product		rs.b 1	;Product number, assigned by manufacturer
-er_Flags		rs.b 1 ;Flags
-er_Reserved03		rs.b 1 ;Must be zero ($ff inverted)
-er_Manufacturer 	rs.w 1;Unique ID,ASSIGNED BY COMMODORE-AMIGA!
-er_SerialNumber 	rs.l 1;Available for use by manufacturer
-er_InitDiagVec		rs.w 1;Offset to optional "DiagArea" structure
-er_Reserved0c		rs.b 1
-er_Reserved0d		rs.b 1
-er_Reserved0e		rs.b 1
-er_Reserved0f		rs.b 1
-ExpansionRom_SIZEOF	rs.b 0
-
-			rsreset
-ec_Interrupt		rs.b 1 ;Optional interrupt control register
-ec_Z3_HighBase		rs.b 1 ;Zorro III   : Bits 24-31 of config address
-ec_BaseAddress		rs.b 1 ;Zorro II/III: Bits 16-23 of config address
-ec_Shutup		rs.b 1 ;The system writes here to shut up a board
-ec_Reserved14		rs.b 1
-ec_Reserved15		rs.b 1
-ec_Reserved16		rs.b 1
-ec_Reserved17		rs.b 1
-ec_Reserved18		rs.b 1
-ec_Reserved19		rs.b 1
-ec_Reserved1a		rs.b 1
-ec_Reserved1b		rs.b 1
-ec_Reserved1c		rs.b 1
-ec_Reserved1d		rs.b 1
-ec_Reserved1e		rs.b 1
-ec_Reserved1f		rs.b 1
-ExpansionControl_SIZEOF rs.b 0
-
-
-DumpD0
-		PUSH
-		bsr	bindec
-		move.l	#2,d1
-		bsr	Print
-		POP
-		rts
-DumpD0hex
-		PUSH
-		bsr	binhexbyte
-		move.l	#2,d1
-		bsr	Print
-		POP
-		rts
-
-
-zorro_tests:
-;		MOVE.B	#$DE,($BFE101).l
-;		PRINT   aParallelCodeDE
-;		PRINT   aZorroTest
-		clr.l	d7			; Clear boardnumber
-		move.l	#$40,d6			; High bits of Z2 mem to allocate
-zorro_next_board:	
-		lea	NewLineTxt,a0
-		bsr	Print
-
-		add.l	#1,d7			; Add 1 to boardnumber
-	;; read out the expansion rom
-		lea	autoconf-V(a6),a2
-		lea	E_EXPANSIONBASE,a0
-		bsr	ReadRom
-
-		lea	autoconf-V(a6),a2
-		clr.l	d0
-		
-		tst.b	er_Reserved03(a2)
-		bne	NoMoreBoards
-
-		clr.l	d0
-		PUSH
-
-		lea	AutoConfBoard,a0
-		move.l	#3,d1
-		bsr	Print
-		move.l	d7,d0
-		bsr	bindec
-		move.l	#2,d1
-		bsr	Print
-		lea	NewLineTxt,a0
-		bsr	Print
-		lea	AutoConfManu,a0
-		move.l	#4,d1
-		bsr	Print
-
-		move.w	er_Manufacturer(a2),d0
-		bsr	DumpD0
-
-
-		lea	AutoConfSerial,a0
-		move.l	#4,d1
-		bsr	Print
-
-		move.w	er_SerialNumber(a2),d0
-		bsr	DumpD0
-		lea	NewLineTxt,a0
-		bsr	Print
-
-
-;		move.b	er_Type(a2),d0
-;		bsr	binhexbyte
-;		bsr	Print
-
-		lea	AutoConfZorro,a0
-		move.l	#4,d1
-		bsr	Print
-
-		clr.l	d0
-		move.b	er_Type(a2),d0
-		and.b	#$c0,d0			; Stop out all except 2 top bits
-		
-		cmp.b	#$c0,d0
-		beq	.z2
-
-		lea	III,a0
-		move.l	#3,d1
-		bsr	Print
-		bra	.z3	
-.z2:
-		lea	II,a0
-		move.l	#3,d1
-		bsr	Print		
-
-.z3:
-		lea	AutoConfMem,a0
-		move.l	#4,d1
-		bsr	Print
-		btst	#5,er_Type(a2)
-		beq	.nomem
-		bsr	PrintYes
-		bra	.mem
-.nomem:
-		bsr	PrintNo
-.mem:
-		lea	AutoConfAutoboot,a0
-		move.l	#4,d1
-		bsr	Print
-
-		btst	#4,er_Type(a2)
-		beq	.noautoboot
-		bsr	PrintYes
-		bra	.autoboot
-.noautoboot:
-		bsr	PrintNo
-.autoboot:
-
-		lea	NewLineTxt,a0
-		bsr	Print
-
-
-		lea	AutoConfLink,a0
-		move.l	#4,d1
-		bsr	Print
-
-		btst	#3,er_Type(a2)
-		beq	.nolink
-		bsr	PrintYes
-		bra	.link
-.nolink:
-		bsr	PrintNo
-.link:
-
-		lea	AutoConfSize,a0
-		move.l	#4,d1
-		bsr	Print
-
-		clr.l	d0
-		move.b	er_Type(a2),d0
-		and.b	#7,d0
-		asl	#2,d0
-		lea	SizePointer,a0
-		move.l	(a0,d0.l),a0
-		move.l	#2,d1
-		bsr	Print
-
-		lea	SizePointer2,a0
-		move.l	(a0,d0.l),ZorroSize-V(a6)
-		POP
-
-
-
-		move.w	er_Manufacturer(a2),d0
-		beq	NoMoreBoards
-		cmp.w	#-1,d0
-		beq	NoMoreBoards
-
-complete_config:
-		lea	E_EXPANSIONBASE,a0
-		bsr	ConfigBoard
-		cmp.l	#0,d0
-		bne	.error1
-
-		lea	NewLineTxt,a0
-		bsr	Print
-	
-		bra	zorro_next_board
-.error1:
-		cmp.l	#-1,d0
-		bne	.error2
-
-		bra	zorro_next_board
-.error2:
-		cmp.l	#-2,d0	
-		bne	.errorUnknown
-		bra	zorro_next_board
-.errorUnknown:
-				; KUK
-		RTS
-NoMoreBoards:
-		lea	NewLineTxt,a0
-		bsr	Print
-		lea	AutoConfDone,a0
-		move.l	#2,d1
-		bsr	Print
-		rts	
-
-
-PrintYes:
-		lea	YES,a0
-		move.l	#2,d1
-		bsr	Print
-		rts
-PrintNo:
-		lea	NO,a0
-		move.l	#1,d1
-		bsr	Print
-		rts
-
-
-; =============== S U B	R O U T	I N E =======================================
-	
-ReadRom: ; a0 = card, a2 = dest
-		move.l	a0,a3
-	
-		clr.l	d0
-		bsr	ReadExpansionByte
-		move.b	d0,(a2)+
-
-	;; all the other bytes are inverted
-		moveq.l	#1,d2
-
-readrom_loop:
-		move.l	d2,d0
-		move.l	a3,a0
-
-		bsr	ReadExpansionByte
-		not.b	d0
-		move.b	d0,(a2)+
-
-		addq.w	#1,d2
-		cmp.w	#ExpansionRom_SIZEOF,d2
-		bls.s	readrom_loop
-
-		rts
-
-WriteExpansionByte:
-		lsl.w	#2,d0		
-		lea.l	0(a0,d0.w),a0
-
-		move.b	d1,d0		
-		lsl.b	#4,d0		
-
-		cmpa.l	#EZ3_EXPANSIONBASE,a0
-		bhs.s	.zorroIII
-		move.b	d0,$002(a0)
-		bra.s	.doWrite
-.zorroIII:	move.b	d0,$100(a0)	
-.doWrite:
-		move.b	d1,(a0)
-
-		clr.l	d0
-		rts
-
-
-ReadExpansionByte:	
-		lsl.w	#2,d0	
-		lea.l	0(a0,d0.w),a0
-
-		move.l	a0,d1	
-		bmi.s	.zorroIII ; check for zorro ii 
-		move.b	$002(a0),d1
-		bra.s	.doRead
-.zorroIII:	move.b	$100(a0),d1 ; check for zorro 3
-.doRead:	lsr.b	#4,d1
-
-		moveq.l #0,d0
-		move.b	(a0),d0
-		and.b	#$f0,d0
-		or.b	d1,d0
-		
-		rts
-
-; =============== S U B	R O U T	I N E =======================================
-
-ConfigBoard:
-
-		cmp.b	#0,AutoConfMode-V(a6)	
-		beq	.quick
-		PUSH
-
-		lea	AutoConfZorroData,a0
-		move.l	#2,d1
-		bsr	Print
-		move.l	#$10,d3
-		lea	autoconf-V(a6),a1
-.loopa:		move.b	(a1)+,d0
-		bsr	binhexbyte
-		move.l	#2,d1
-		bsr	Print
-		lea	SpaceTxt,a0
-		bsr	Print
-		dbf	d3,.loopa
-
-		lea	AutoConfAssign,a0
-		move.l	#5,d1
-		bsr	Print
-
-		POP
-.loop:
-	bsr	GetInput
-		cmp.b	#0,BUTTON-V(a6)
-		beq	.loop
-		cmp.b	#1,LMB-V(a6)
-		beq	.assign
-		cmp.b	#1,RMB-V(a6)
-		beq	.noassign
-		move.b	GetCharData-V(a6),d0
-		bclr	#5,d0				; Make it uppercase
-		cmp.b	#"Y",d0
-		beq	.assign
-		cmp.b	#"N",d0
-		beq	.noassign
-
-		bra	.loop
-.assign:	bra	.quick
-.noassign:	bra	ConfigBoard_Shutup
-.quick:
-		move.l	#-1,d0
-		moveq	#$FFFFFF00+ERT_TYPEMASK,d1
-		and.b	er_Type(a0),d1
-		cmp.b	#ERT_ZORROII,d1
-		bne.s	ConfigBoard_Z3
-
-		;;  pass the type byte
-		move.b	er_Type(a0),d0
-		bra	ConfigBoard_Z2_RAM
-	
-ConfigBoard_Z3:	
-		moveq	#ec_Shutup+ExpansionRom_SIZEOF,d0
-		bsr	WriteExpansionByte
-		move.l	#-1,d0
-		rts
-
-ConfigBoard_Z2_RAM:
-
-		btst	#5,d0
-		beq	ConfigBoard_Shutup
-
-		PUSH
-		lea	MemCardTxt,a0
-		move.l	#5,d1
-		bsr	Print
-		move.l	d6,d0
-		asl.l	#8,d0
-		asl.l	#8,d0
-		move.l	d0,d2
-		bsr	binhex
-		move.l	#4,d1
-		bsr	Print
-
-		lea	MinusTxt,a0
-		move.l	#5,d1
-		bsr	Print
-	
-
-		move.l	ZorroSize-V(a6),d0
-		add.l	d2,d0
-		move.l	#4,d1
-		bsr	binhex
-		bsr	Print
-
-		cmp.l	#$a00000,d2
-		bgt	.illegal
-		cmp.l	#$a00000,d0
-		bgt	.illegal
-		
-		bra	.notillegal
-.illegal:
-		lea	IllegalZ2,a0
-		move.l	#1,d1
-		bsr	Print				
-.notillegal:
-		POP
-
-;;;  hack to put a Z2 memory card at address 0x200000
-		move.l	d6,d1
-		moveq	#ec_BaseAddress+ExpansionRom_SIZEOF,d0
-		bsr	WriteExpansionByte
-
-		move.l	ZorroSize-V(a6),d0
-		swap	d0
-		add.l	d0,d6			; Add size of board to get address for next board
-
-ConfigBoard_Done:
-		move.l	#0,d0
-		rts
-
-ConfigBoard_Shutup:
-		moveq	#ec_Shutup+ExpansionRom_SIZEOF,d0
-		bsr	WriteExpansionByte
-		move.l	#-2,d0
-		rts
-
-; =============== S U B	R O U T	I N E =======================================
-
-;hexbytetobin
-
 ;------------------------------------------------------------------------------------------
 
 DevPrint:
@@ -10427,11 +9623,12 @@ SerText:
 	dc.l	BpsNone,Bps2400,Bps9600,Bps38400,Bps115200,BpsNone
 	
 Menus:					; Pointers to the menus
-	dc.l	MainMenuItems,0,AudioMenuItems,MemtestMenuItems,IRQCIAtestMenuItems,GFXtestMenuItems,PortTestMenuItems,OtherTestItems,0,0
+	dc.l	MainMenuItems,0,AudioMenuItems,MemtestMenuItems,IRQCIAtestMenuItems,GFXtestMenuItems,PortTestMenuItems,0,0
 MenuCode:				; Pointers to pointers of the menus.
-	dc.l	MainMenuCode,0,AudioMenuCode,MemtestMenuCode,IRQCIAtestMenuCode,GFXtestMenuCode,PortTestMenuCode,OtherTestCode,0,0
+	dc.l	MainMenuCode,0,AudioMenuCode,MemtestMenuCode,IRQCIAtestMenuCode,GFXtestMenuCode,PortTestMenuCode,0,0
 MenuKeys:
-	dc.l	MainMenuKey,0,AudioMenuKey,MemtestMenuKey,IRQCIAtestMenuKey,GFXtestMenuKey,PortTestMenuKey,OtherTestKey,0,0
+	dc.l	MainMenuKey,0,AudioMenuKey,MemtestMenuKey,IRQCIAtestMenuKey,GFXtestMenuKey,PortTestMenuKey,0,0
+
 MainMenuText:
 	dc.b	"                    Atari DiagROM "
 	VERSION
@@ -10456,17 +9653,17 @@ MainMenu7:
 	dc.b	"6 - Diskdrivetests",0
 MainMenu8:
 	dc.b	"7 - Keyboardtests",0
-MainMenu9:
-	dc.b	"8 - Other tests",0
 MainMenu10:
 	dc.b	"S - Setup",0
 	EVEN
+
 MainMenuItems:
-	dc.l	MainMenuText,MainMenu1,MainMenu2,MainMenu3,MainMenu4,MainMenu5,MainMenu6,MainMenu7,MainMenu8,MainMenu9,MainMenu10,0,0
+	dc.l	MainMenuText,MainMenu1,MainMenu2,MainMenu3,MainMenu4,MainMenu5,MainMenu6,MainMenu7,MainMenu8,MainMenu10,0,0
 MainMenuCode:
-	dc.l	SystemInfoTest,AudioMenu,MemtestMenu,IRQCIAtestMenu,GFXtestMenu,PortTestMenu,NotImplemented,KeyBoardTest,OtherTest,Setup
+	dc.l	SystemInfoTest,AudioMenu,MemtestMenu,IRQCIAtestMenu,GFXtestMenu,PortTestMenu,NotImplemented,KeyBoardTest,Setup,0,0
 MainMenuKey:	; Keys needed to choose menu. first byte keykode 2:nd byte serialcode.
-	dc.b	"0","1","2","3","4","5","6","7","8","9","S",0
+	dc.b	"0","1","2","3","4","5","6","7","8","S",0
+
 NotImplTxt:
 	dc.b	2,"This function is not implemented yet. Anyday.. soon(tm), Thursday?",$a,$a,0
 AnyKeyMouseTxt:
@@ -10564,33 +9761,17 @@ MemtestMenu6:
 	dc.b	"6 - Manual memorytest",0
 MemtestMenu7:
 	dc.b	"7 - Manual memoryedit",0
-MemtestMenu8:
-	dc.b	"8 - Autoconfig - Automatic",0
 MemtestMenu9:
 	dc.b	"9 - Mainmenu",0
 	EVEN
 MemtestMenuItems:
-	dc.l	MemtestText,MemtestMenu1,MemtestMenu2,MemtestMenu3,MemtestMenu4,MemtestMenu5,MemtestMenu6,MemtestMenu7,MemtestMenu8,MemtestMenu9,0
+	dc.l	MemtestText,MemtestMenu1,MemtestMenu2,MemtestMenu3,MemtestMenu4,MemtestMenu5,MemtestMenu6,MemtestMenu7,MemtestMenu9,0
 MemtestMenuCode:
-	dc.l	CheckDetectedChip,CheckExtendedChip,CheckDetectedMBMem,CheckExtended16MBMem,CheckExtendedMBMem,CheckMemManual,CheckMemEdit,AutoConfig,MainMenu
+	dc.l	CheckDetectedChip,CheckExtendedChip,CheckDetectedMBMem,CheckExtended16MBMem,CheckExtendedMBMem,CheckMemManual,CheckMemEdit,MainMenu
 MemtestMenuKey:
-	dc.b	"1","2","3","4","5","6","7","8","9",0
+	dc.b	"1","2","3","4","5","6","7","9",0
 	EVEN
-OtherTestItems:
-	dc.l	OtherTestText,OtherTestMenu1,OtherTestMenu2,OtherTestMenu3,0
-OtherTestText:
-	dc.b	2,"Other tests",$a,$a,0
-OtherTestMenu1:
-	dc.b	"1 - RTC Test",0
-OtherTestMenu2:
-	dc.b	"2 - Autoconfig - Detailed",0
-OtherTestMenu3:
-	dc.b	"9 - Mainmenu",0
-	EVEN
-OtherTestCode:
-	dc.l	RTCTest,AutoConfigDetail,MainMenu
-OtherTestKey:
-	dc.b	"1","2","9",0
+
 hextab:
 	dc.b	"0123456789ABCDEF"	; For bin->hex convertion
 
@@ -10672,11 +9853,13 @@ CheckMemBinaryTxt:
 IRQCIATestText:
 	dc.b	2,"IRQ & CIA Tests",$a,$a,0
 IRQCIATestMenu1:
-	dc.b	"1 - Test IRQs",0
+	dc.b	"1 - Test IRQs",0,0
+	EVEN
 IRQCIATestMenu2:
-	dc.b	"2 - Test CIAs",0
+	dc.b	"2 - Test CIAs",0,0
+	EVEN
 IRQCIAtestMenu7:
-	dc.b	"9 - Mainmenu",0
+	dc.b	"9 - Mainmenu",0,0
 	EVEN
 
 IRQLev1Txt:
@@ -10734,7 +9917,7 @@ CIANoRasterTxt2:
 IRQCIAtestMenuItems:
 	dc.l	IRQCIATestText,IRQCIATestMenu1,IRQCIATestMenu2,IRQCIAtestMenu7,0,0
 IRQCIAtestMenuCode:
-	dc.l	IRQCIAIRQTest,IRQCIACIATest,MainMenu
+	dc.l	IRQCIAIRQTest,IRQCIACIATest,MainMenu,0,0
 IRQCIAtestMenuKey:
 	dc.b	"1","2","9",0
 
@@ -10922,30 +10105,7 @@ NotEnoughChipTxt:
 	dc.b	"Not enough chipmem detected",$a,$a,0
 ShadowChiptxt:
 	dc.b	$a,$d,"Chipmem Shadowram detected, guess there is no more chipmem, stopping here",$a,$d,0
-AutoConfTxt:
-	dc.b	2,"Doing autoconfigstuff on Zorro slots (ONLY ONCE!)",$a,$a,0
-AutoConfBoard:
-	dc.b	"Board number: ",0
-AutoConfManu:
-	dc.b	"  Manufacturer number: ",0
-AutoConfSerial:
-	dc.b	"  Serialnumber: ",0
-AutoConfZorro:
-	dc.b	"    Zorrotype: ",0
-AutoConfMem:
-	dc.b	"  Link to system free pool: ",0
-AutoConfAutoboot:
-	dc.b	"  Autoboot ",0
-AutoConfLink:
-	dc.b	"    Linked to next board: ",0
-AutoConfSize:
-	dc.b	"  Size: ",0
-AutoConfAssign:
-	dc.b	$a,"Assign board? Y)es (LMB) or N)o (RMB) (If possible)",$a,0
-AutoConfZorroData:
-	dc.b	$a,"Dump of Zorrodata: ",0
-AutoConfDone:
-	dc.b	2,"--- NO MORE BOARDS AVAIBLE! ---",$a,0
+
 S8MB:
 	dc.b	"8MB",0
 S64k:
@@ -11702,8 +10862,6 @@ SHIT:
 	dc.l	0			; SHITData
 ZorroSize:
 	dc.l	0
-AutoConfMode:
-	dc.b	0			; Type of autoconf. non 0 = detailed
 
 C:
 	EVEN
@@ -11721,8 +10879,6 @@ AudioWaves:
 	EVEN
 DummySprite:
 	dc.l	0
-
-autoconf:	blk.b	20,0
 
 Bpl1str:
 	dc.l	0			; Space for the "BPL1" string
