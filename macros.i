@@ -18,6 +18,12 @@ PWRLEDOFF: MACRO
 
 ENDM
 
+VBLT: MACRO
+
+	NOP
+
+ENDM
+
 TOGGLEPWRLED: MACRO
 
 	NOP
@@ -318,3 +324,20 @@ TestMemWord: MACRO
 .done:
 ENDM
 
+HWRegPrintByte: MACRO
+\@:
+	lea	.label,a0
+	move.w	#7,d1
+	bsr	Print
+	move.b	\1-V(a6),d0
+	bsr	binhexbyte
+	move.w	#3,d1
+	bsr	Print
+	lea	Space3,a0
+	bsr	Print
+	bra .exit
+.label:
+	dc.b \2, 0 
+	EVEN
+.exit:
+ENDM

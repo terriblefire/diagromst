@@ -14,6 +14,9 @@ v_base    equ $FFFF8200
 v_bas_h   equ $FFFF8201
 v_bas_m   equ $FFFF8203
 v_bas_l   equ $FFFF820D
+v_adr_h   equ $FFFF8205
+v_adr_m   equ $FFFF8207
+v_adr_l   equ $FFFF8209
 v_mode 	  equ $FFFF8260
 v_sync	  equ $FFFF820a
 

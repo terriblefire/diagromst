@@ -281,7 +281,7 @@ POSTDetectFastmem: MACRO
 	; Lets detect fastmem, do NOT touch D0, A6 or A4
 	; As we have several blocks to search. we do it in a subroutine instead of in-code as we did with chipmem
 					
-	;	move.l	d3,a7			; Store start of chipmem
+	move.l	d3,a7			; Store start of chipmem
 
 	clr.l	d1
 	lea	$0,a0
