@@ -7,6 +7,16 @@ ROMVERSION: MACRO
 	endc
 ENDM
 
+ROMHEADER: MACRO
+	ifne ST_CART ; if ST_CART = 1
+	dc.l $FA52235F 
+	bra.s	_main
+	else
+	bra.s	_main
+	ROMVERSION
+	endc
+ENDM
+
 PUSH:	MACRO
 	movem.l a0-a6/d0-d7,-(a7)	;Store all registers in the stack
 	ENDM

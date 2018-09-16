@@ -12,8 +12,7 @@
 START:	
 	; Lets start the code..  with a jump
 TheStart:
-	bra.s	_main
-	ROMVERSION
+	ROMHEADER
 
 	dc.l    _main       ; reseth, pointer to reset handler 
 	dc.l	rom_base
@@ -10236,7 +10235,6 @@ Octant_Table:
 	dc.b	7*4+1
 
 Music:
-	incbin	"Music.MOD"
 	EVEN
 TestPic:
 	incbin	"TestPIC.PI1"
@@ -10789,17 +10787,15 @@ ptplay:
 	blk.b	mt_END-MT_Init,0			; Reserve memory of protracker replayroutine
 
 	EVEN
-
-
 	dc.b	"This is the brutal end of this ROM, everything after this are just pure noise.    End of Code...",0
 
 	EVEN
 
 EndData:
 	dc.l	0
-
+    ifeq   ST_CART
 BITTEREND:
 	blk.b	rom_size-(BITTEREND-START)-16,0		; Crapdata that needs to be here
 	dc.l	$00180019,$001a001b,$001c001d,$001e001f	; or IRQ will TOTALLY screw up on machines with 68000-68010
-
+    endc
 ROMEND:

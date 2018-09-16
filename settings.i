@@ -81,17 +81,27 @@ mfp_rsr         EQU     $FFFA2B
 mfp_tsr         EQU     $FFFA2D
 mfp_udr        EQU     $FFFA2F
 
-    ifnd STE_ROM
-STE_ROM     EQU 1
-    endc
+  ifnd STE_ROM 
+STE_ROM  EQU 1
+  else 
+ST_CART EQU 0
+  endc
 
-  ifne STE_ROM
+  ifne ST_CART
+rom_base equ $FA0000
+rom_size equ $20000
+rom_setup equ 1
+  endc 
+
+  ifnd rom_setup
+    ifne STE_ROM
 rom_base equ $E00000
 rom_size equ $40000
-  else
+    else
 rom_base equ $fc0000
 rom_size equ $30000
-  endc	
+    endc	
+  endc
 	
 LOWRESSize:	equ	40*256
 HIRESSize:	equ	80*512
