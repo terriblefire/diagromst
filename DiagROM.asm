@@ -587,13 +587,12 @@ code:
 	bsr	CopyToChip
 
 	bsr	InitStuff
+
 					
 ; Initialize the screen.
 
 	cmp.b	#0,NoDraw-V(a6)
 	bne	.NoChip
-
-	bsr	SetMenuCopper
 
 	lea	InitDONEtxt,a0
 	bsr	SendSerial
@@ -665,10 +664,8 @@ code:
 
 	clr.l	d7
 
-
 	bsr	DefaultVars
-
-
+	bsr InitStuff
 
 	move.l	#Menus,Menu-V(a6)
 	bra	MainMenu			; Print the mainmenu
@@ -700,34 +697,6 @@ MainLoop:
 	
 Exit:
 	
-	rts
-
-SetMenuCopper:
-	lea	InitCOP1LCH,a0
-	bsr	SendSerial
-	move.l	a6,d0
-	add.l	#MenuCopper-V,d0
-;	move.l	d0,$dff080			;Load new copperlist
-	lea	InitDONEtxt,a0
-	bsr	SendSerial
-
-	lea	InitCOPJMP1,a0
-	bsr	SendSerial
-;	move.w	$dff088,d0	
-	lea	InitDONEtxt,a0
-	bsr	SendSerial
-
-	lea	InitDMACON,a0
-	bsr	SendSerial
-;	move.w	#$8380,$dff096
-	lea	InitDONEtxt,a0
-	bsr	SendSerial
-
-	lea	InitBEAMCON0,a0
-	bsr	SendSerial
-;	move.w	#32,$dff1dc			;Hmmm
-	lea	InitDONEtxt,a0
-	bsr	SendSerial
 	rts
 
 InitStuff:
@@ -1559,7 +1528,7 @@ FixBitplane:
 	lsr.w #8,d0 ; $00HH00MM
 	move.l d0,v_base ; load mid and high bytes of gapped 24bit address. low byte not assigned.
 	
-	move.w	#$0022,color0
+	move.w	#$0000,color0
 	move.w	#$0f00,color2	
 	move.w	#$00f0,color1
 	move.w	#$0ff0,color3
@@ -1701,6 +1670,7 @@ PutChar:
 	move.l	d0,d5
 	sub.b	#32,d0				; Subtract 32 from the char as " " is the first char in the Font.
 	clr.l	d4				; if d4 if 0. no invert of char
+	
 	cmp.b	#4,d1
 	blt	.Normal				; Normal color. do not invert
 	move.b	#1,d4
@@ -1722,14 +1692,11 @@ PutChar:
 	move.l	d7,a0
 	move.l	a0,a1		; load A1 with address of BPL2
 	addq.l	#2,a1
-	move.l	a0,a2		; load A1 with address of BPL2
-	addq.l	#4,a2
 	
 	lea	RomFont,a3
 
 	adda.l	d3,a0
 	adda.l	d3,a1
-	adda.l	d3,a2				; Add the value to the screen bitplane addresses
 
 	mulu	#8,d0
 	add.l	d0,a3
@@ -1744,25 +1711,23 @@ PutChar:
 	cmp.b	#1,d4				; IF D4 is 1, invert char
 	bne.s	.noinvert
 	eor	#$ff,d2
+
 .noinvert:
 	clr.b	(a0)
 	clr.b	(a1)
-	clr.b	(a2)				; To be sure. delete anything
+
 	btst	#0,d1				; Check what bitplane to print on
 	beq.w	.nopl1
 	move.b	d2,(a0)
+
 .nopl1:
 	btst	#1,d1
 	beq.s	.nopl2
 	move.b	d2,(a1)
+
 .nopl2:
-	btst	#2,d1
-	; beq.s	.nopl3
-	; move.b	d2,(a2) 	
-.nopl3:
 	adda.l	#80*2,a0
 	adda.l	#80*2,a1
-	adda.l	#80*2,a2
 	dbf	d0,.loop			; put char on the screen
 .no:
 	move.l	d5,d0
@@ -1799,17 +1764,12 @@ PrintChar:					; Puts a char on screen and add X, Y variables depending on char 
 	move.l	d1,d0
 	cmp.b	Color-V(a6),d0
 
-
-
-
 	beq	.samecol			; if it is the same color as last time.. do nothing special
 	move.b	d0,Color-V(a6)
 
 						; ok we have a new color, change it to serialport
 	cmp.b	#8,d0
 	blt	.noinvert
-
-
 
 	move.b	#1,Inverted-V(a6)		; set the inverted-flag
 
@@ -3830,6 +3790,7 @@ WaitReleased:					; Waits until some "button" is unreleased
 .loop:
 		
 	move.b	slowcia,color0
+	move.b  #0,color0
 	add.l	#1,d7				; Add 1 to the timout counter
 	cmp.l	#$ffff,d7			; did we count for a lot of times? well then there is a timeout
 	beq	.timeout
@@ -5297,6 +5258,7 @@ IRQCIAtestMenu:
 	bra	MainLoop
 
 IRQCIAIRQTest:
+	bsr FixBitplane
 	bsr	InitScreen
 	lea	IRQCIAIRQTestText,a0
 	move.w	#2,d1
@@ -5347,6 +5309,7 @@ IRQCIAIRQTest:
 
 	clr.w	IRQLevDone-V(a6)		; Clear variable, we let the IRQ set it. if it gets set. we have working IRQ
 	move.l	#IRQLevTest,$68			; Set up IRQ Level 2
+	
 	;move.w	#$c008,$dff09a			; Enable IRQ
 	;move.w	#$c008,$dff09a			; Enable IRQ
 	;move.w	#$8008,$dff09c			; Trigger IRQ
@@ -5369,12 +5332,12 @@ IRQCIAIRQTest:
 
 	clr.w	IRQLevDone-V(a6)		; Clear variable, we let the IRQ set it. if it gets set. we have working IRQ
 	move.l	#IRQLevTest,$6c			; Set up IRQ Level 3
-	move.w	#$c020,$dff09a			; Enable IRQ
-	move.w	#$c020,$dff09a			; Enable IRQ
-	move.w	#$8020,$dff09c			; Trigger IRQ
+	;move.w	#$c020,$dff09a			; Enable IRQ
+	;move.w	#$c020,$dff09a			; Enable IRQ
+	;move.w	#$8020,$dff09c			; Trigger IRQ
 	bsr	TestIRQ
-	move.w	#$7fff,$dff09c			; Disable all INTREQ
-	move.w	#$7fff,$dff09a			; Disable all INTREQ
+	;move.w	#$7fff,$dff09c			; Disable all INTREQ
+	;move.w	#$7fff,$dff09a			; Disable all INTREQ
 	cmp.b	#2,d0
 	beq	.done3
 
@@ -5390,12 +5353,12 @@ IRQCIAIRQTest:
 
 	clr.w	IRQLevDone-V(a6)		; Clear variable, we let the IRQ set it. if it gets set. we have working IRQ
 	move.l	#IRQLevTest,$70			; Set up IRQ Level 4
-	move.w	#$c080,$dff09a			; Enable IRQ
-	move.w	#$c080,$dff09a			; Enable IRQ
-	move.w	#$8080,$dff09c			; Trigger IRQ
+	;move.w	#$c080,$dff09a			; Enable IRQ
+	;move.w	#$c080,$dff09a			; Enable IRQ
+	;move.w	#$8080,$dff09c			; Trigger IRQ
 	bsr	TestIRQ
-	move.w	#$7fff,$dff09c			; Disable all INTREQ
-	move.w	#$7fff,$dff09a			; Disable all INTREQ
+	;move.w	#$7fff,$dff09c			; Disable all INTREQ
+	;move.w	#$7fff,$dff09a			; Disable all INTREQ
 	cmp.b	#2,d0
 	beq	.done4
 
@@ -5411,12 +5374,12 @@ IRQCIAIRQTest:
 
 	clr.w	IRQLevDone-V(a6)		; Clear variable, we let the IRQ set it. if it gets set. we have working IRQ
 	move.l	#IRQLevTest,$74			; Set up IRQ Level 5
-	move.w	#$c800,$dff09a			; Enable IRQ
-	move.w	#$c800,$dff09a			; Enable IRQ
-	move.w	#$8800,$dff09c			; Trigger IRQ
+	;move.w	#$c800,$dff09a			; Enable IRQ
+	;move.w	#$c800,$dff09a			; Enable IRQ
+	;move.w	#$8800,$dff09c			; Trigger IRQ
 	bsr	TestIRQ
-	move.w	#$7fff,$dff09c			; Disable all INTREQ
-	move.w	#$7fff,$dff09a			; Disable all INTREQ
+	;move.w	#$7fff,$dff09c			; Disable all INTREQ
+	;move.w	#$7fff,$dff09a			; Disable all INTREQ
 	cmp.b	#2,d0
 	beq	.done5
 
@@ -5431,12 +5394,12 @@ IRQCIAIRQTest:
 
 	clr.w	IRQLevDone-V(a6)		; Clear variable, we let the IRQ set it. if it gets set. we have working IRQ
 	move.l	#IRQLevTest,$78			; Set up IRQ Level 6
-	move.w	#$e000,$dff09a			; Enable IRQ
-	move.w	#$e000,$dff09a			; Enable IRQ
-	move.w	#$a000,$dff09c			; Trigger IRQ
+	;move.w	#$e000,$dff09a			; Enable IRQ
+	;move.w	#$e000,$dff09a			; Enable IRQ
+	;move.w	#$a000,$dff09c			; Trigger IRQ
 	bsr	TestIRQ
-	move.w	#$7fff,$dff09c			; Disable all INTREQ
-	move.w	#$7fff,$dff09a			; Disable all INTREQ
+	;move.w	#$7fff,$dff09c			; Disable all INTREQ
+	;move.w	#$7fff,$dff09a			; Disable all INTREQ
 	cmp.b	#2,d0
 	beq	.done6
 
@@ -5452,8 +5415,8 @@ IRQCIAIRQTest:
 	clr.w	IRQLevDone-V(a6)		; Clear variable, we let the IRQ set it. if it gets set. we have working IRQ
 	move.l	#IRQLevTest,$78			; Set up IRQ Level 7
 	bsr	TestIRQ
-	move.w	#$7fff,$dff09c			; Disable all INTREQ
-	move.w	#$7fff,$dff09a			; Disable all INTREQ
+	;move.w	#$7fff,$dff09c			; Disable all INTREQ
+	;move.w	#$7fff,$dff09a			; Disable all INTREQ
 	cmp.b	#2,d0
 	beq	.done7
 
@@ -5481,7 +5444,7 @@ TestIRQ:				; Test if IRQ was triggered
 					;	d0 = 1	== We have failure
 					;	d0 = 2	== User pressed cancel
 	clr.l	d0
-	move.w	#100,d7
+	move.w	#1000,d7
 .loop:
 	bsr	GetInput			; Check for input from user
 	cmp.b	#1,BUTTON-V(a6)			; If button is pressed, exit
@@ -5490,8 +5453,9 @@ TestIRQ:				; Test if IRQ was triggered
 	cmp.w	#1,IRQLevDone-V(a6)		; Check if IRQLevDone is set, done in IRQ routine
 	beq	.yes
 	dbf	d7,.loop
+
 	lea	FAILED,a0
-	move.l	#1,d1
+	move.l	#5,d1
 	bsr	Print
 	move.b	#1,d0				; we exited loop, test failed
 	rts
@@ -5513,8 +5477,8 @@ TestIRQ:				; Test if IRQ was triggered
 IRQLevTest:					; Small IRQ Rouine, all it does is to set IRQLevDone to 1
 	move.w	#$fff,color0
 	move.w	#1,IRQLevDone-V(a6)
-	move.w	#$7fff,$dff09c			; Disable all INTREQ
-	move.w	#$7fff,$dff09a			; Disable all INTREQ
+	;move.w	#$7fff,$dff09c			; Disable all INTREQ
+	;move.w	#$7fff,$dff09a			; Disable all INTREQ
 	rte
 
 CIATIME	EQU	174
@@ -6014,29 +5978,33 @@ GFXtestMenu:
 
 GFXTestScreen:
 	bsr	ClearScreen
+
 	move.l	#EndTestPic-TestPic,d0
 	move.l	d0,d2
-	bsr	GetChip
-	cmp.l	#0,d0
-	beq	.exit
-	cmp.l	#1,d0
-	beq	.exit
-	move.l	#LOWRESSize,d1
-	lea	ECSCopper-V(a6),a0			; Location of copperlist in memory
-	lea	ECSTestColor,a1
-	bsr	FixECSCopper
 
+	move.l	Bpl1Ptr-V(a6),d7
+	add.l	#$ff,d7
+	and.l	#$ffffff00,d7
+	move.l	d7,a0
 
-	move.l	d0,a0					; Copy the address of start of screen to a0
-	lea	TestPic,a1				; Set a1 to where testscreen is in ROM
+	lea	TestPic+34,a1				; Set a1 to where testscreen is in ROM
 .loop:
 	move.b	(a1)+,(a0)+				; Copy testimage to Chipmem
 	dbf	d2,.loop
 
+	move.l  #16-1,d2
+	lea	TestPic+2,a1				; Set a1 to where testscreen is in ROM
+	lea color0,a0
+.palloop:
+	move.w	(a1)+,(a0)+				; Copy testimage to Chipmem
+	dbf	d2,.palloop
+
+	move.b	  #$0,v_mode ; set low res
+	move.b 	  #$2,v_sync ; setup pal
+
 .exit:
 	bsr	WaitButton
-
-	bsr	SetMenuCopper
+	bsr InitStuff
 	bra	GFXtestMenu
 
 
@@ -6055,8 +6023,6 @@ GFXtest320x200:
 	move.l	#HIRESSize,d1
 	lea	ECSCopper-V(a6),a0			; Location of copperlist in memory
 	lea	ECSColor32,a1
-
-	bsr	FixECSCopper
 
 	clr.l	d0
 	clr.l	d1
@@ -6133,79 +6099,9 @@ GFXtest320x200:
 	move.w	#$3ff,$dff096				; Turn off all DMA
 	
 .exit:
-	bsr	SetMenuCopper
 	bsr	GFXtestMenu
 
 
-
-							; INDATA:
-							;	a0 = ECSCopperlist
-							;	a1 = List of colors to be set
-							;	d0 = Startaddress of space
-							;	d1 = Size of bytes of one screen
-
-FixECSCopper:
-	PUSH
-	add.l	#96,a0					; Add so we get to the spot where palette starts.
-	move.l	#31,d7
-	move.w	#$180,d6				; Start with $180
-.loop:
-	move.w	d6,(a0)+
-	move.w	(a1)+,(a0)+
-	add.w	#2,d6
-	dbf	d7,.loop				; Loop around and do all colors
-	
-
-
-	move.l	d0,d6
-
-	lea	GfxTestBpl-V(a6),a2
-
-	move.l	#4,d7
-.loop2:
-	move.l	d6,(a2)+
-	move.w	d6,6(a0)
-	swap	d6
-	move.w	d6,2(a0)
-	swap	d6
-	add.l	#8,a0
-	add.l	d1,d6
-	dbf	d7,.loop2				; Set all bitplanepointers
-
-
-
-
-.Slut:
-
-
-	lea	InitCOP1LCH,a0
-	bsr	SendSerial
-	move.l	a6,d0
-	add.l	#ECSCopper-V,d0
-	move.l	d0,$dff080			;Load new copperlist
-	lea	InitDONEtxt,a0
-	bsr	SendSerial
-
-	lea	InitCOPJMP1,a0
-	bsr	SendSerial
-	move.w	$dff088,d0
-	lea	InitDONEtxt,a0
-	bsr	SendSerial
-
-	lea	InitDMACON,a0
-	bsr	SendSerial
-	move.w	#$8380,$dff096
-	lea	InitDONEtxt,a0
-	bsr	SendSerial
-
-	lea	InitBEAMCON0,a0
-	bsr	SendSerial
-	move.w	#32,$dff1dc			;Hmmm
-	lea	InitDONEtxt,a0
-	bsr	SendSerial
-
-	lea	GFXtestNoSerial,a0
-	bsr	SendSerial
 ;.exit:
 	POP
 	rts
@@ -8056,7 +7952,6 @@ PrintHWReg:
 	rts
 
 RTEcode:					; Just to have something to point IRQ to.. doing nothing
-	move.w	#$444,color0
 	rte
 
 GetChip:					; Gets extra chipmem below the reserved workarea.
@@ -9500,16 +9395,6 @@ InitKeyboardResettxt:
 Initmousetxt:
 	dc.b	"    Checking status of mousebuttons for different startups: ",$a,$d
 	dc.b	"            ",0
-InitINTENAtxt:
-	dc.b	"    Set all Interrupt enablebits (INTENA $dff09a) to Disabled: ",0
-InitINTREQtxt:
-	dc.b	"    Set all Interrupt requestbits (INTREQ $dff09c) to Disabled: ",0
-InitDMACONtxt:
-	dc.b	"    Set all DMA enablebits (DMACON $dff096) to Disabled: ",0
-InitCOP1LCH:
-	dc.b	"    Set Start of copper (COP1LCH $dff080): ",0
-InitCOPJMP1:
-	dc.b	"    Starting Copper (COPJMP1 $dff088): ",0
 InitDMACON:
 	dc.b	"    Set all DMA enablebits (DMACON $dff096) to Enabled: ",0
 InitBEAMCON0:
@@ -9630,12 +9515,12 @@ MenuKeys:
 	dc.l	MainMenuKey,0,AudioMenuKey,MemtestMenuKey,IRQCIAtestMenuKey,GFXtestMenuKey,PortTestMenuKey,0,0
 
 MainMenuText:
-	dc.b	"                    Atari DiagROM "
+	dc.b	"               Atari DiagROM "
 	VERSION
 	dc.b	" - "
 	incbin	"BuildDate.txt"
 	dc.b	$a
-	dc.b	"                    MAIN MENU",$a,$a,0
+	dc.b	"                       MAIN MENU",$a,$a,0
 
 MainMenu1:
 	dc.b	"0 - Systeminfo",0
@@ -9928,17 +9813,16 @@ IRQCIAIRQTestText2:
 
 	EVEN
 GFXtestMenuItems:
-	dc.l	GFXtestText,GFXtestMenu1,GFXtestMenu2,GFXtestMenu3,0
+	dc.l	GFXtestText,GFXtestMenu1,GFXtestMenu3,0
 GFXtestMenuCode:
-	dc.l	GFXTestScreen,GFXtest320x200,MainMenu,0	
+	dc.l	GFXTestScreen,MainMenu,0	
 GFXtestMenuKey:
-	dc.b	"1","2","9",0
+	dc.b	"1","9",0
+
 GFXtestText:
 	dc.b	2,"Graphicstests",$a,$a,0
 GFXtestMenu1:
-	dc.b	"1 - Testpicture in lowres 32Col",0
-GFXtestMenu2:
-	dc.b	"2 - Testscreen 320x200",0
+	dc.b	"1 - Testpicture in lowres 16 Col",0
 GFXtestMenu3:
 	dc.b	"9 - Exit to mainmenu",0
 GFXtestNoSerial:
@@ -10355,8 +10239,7 @@ Music:
 	incbin	"Music.MOD"
 	EVEN
 TestPic:
-;	inciff	"test.iff"
-	incbin	"testbild.raw"
+	incbin	"TestPIC.PI1"
 EndTestPic:
 	EVEN
 EndMusic:

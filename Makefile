@@ -11,7 +11,7 @@ split: split.o
 split.o: split.cpp
 date:	
 	date +"%d-%b-%y" > BuildDate.txt
-run:
+run: DiagROM
 	hatari --machine st --tos DiagROM.rom --memsize 0 --rs232-in /tmp/vsp --rs232-out /tmp/vsp 
 mif:
 	bin2mif -w 16 DiagROM.rom  > 16bit.mif
