@@ -84,13 +84,16 @@ Begin:
 	; And explaining simliar text to serialport.
 	KPRINTSLN '- Parallel Code $ff - Start of ROM, CPU Seems somewhat alive'
 
-	KPRINTS ' - Resetting all hardware (RESET instruction):'
+	KPRINTS ' - Resetting all hardware (RESET instruction):  '
+	
 	reset
-	KPRINTSLN ' Done.'
 
 	;; setup the hardware again
 
 	InitMFP
+
+	KPRINTSLN ' Done.'
+
 
 	KPRINTS   ' - Reinitialising Video ($10000): '
 	InitVideo $10000
@@ -1641,10 +1644,10 @@ rs232_out:
 	beq	.noserial
 	PUSH
 	bsr	ReadSerial
-	move.l	#$9000,d2			; Load d2 with a timeoutvariable. only test this number of times.
+	move.l	#$10000,d2			; Load d2 with a timeoutvariable. only test this number of times.
 						; IF CIA for serialport is dead we will not end up in a wait-forever-loop.
 						; and as we cannot use timers. we have to do this dirty style of coding...
-	SENDSERIAL d0
+	SENDSERIAL d0,d2
 	POP
 .noserial:
 	rts
@@ -7398,7 +7401,7 @@ ForceSer:					; For debug. print stuff on serialport. if port disabled force 960
 						; IF CIA for serialport is dead we will not end up in a wait-forever-loop.
 						; and as we cannot use timers. we have to do this dirty style of coding...
 
-	SENDSERIAL d0
+	SENDSERIAL d0, d2
 	POP
 	rts
 .noserial:
@@ -7481,7 +7484,7 @@ DumpSerial:				; This is only for PRE-Memory usage. Dumps a string to serialport
 	move.l	#10000,d2			; Load d2 with a timeoutvariable. only test this number of times.
 						; IF CIA for serialport is dead we will not end up in a wait-forever-loop.
 						; and as we cannot use timers. we have to do this dirty style of coding...
-	SENDSERIAL d7
+	SENDSERIAL d7, d2
 	bra.s	.loop
 .nomore:
 	jmp	(a1)				; AS we cannot use RTS (and bsr/jsr) jump here after we are done.
@@ -7499,7 +7502,7 @@ DumpSerialChar:				; This is only for PRE-Memory usage. Dumps a string to serial
 						; IF CIA for serialport is dead we will not end up in a wait-forever-loop.
 						; and as we cannot use timers. we have to do this dirty style of coding...
 DumpSerialCharD7:	
-	SENDSERIAL d7
+	SENDSERIAL d7, d2
 .nomore:
 	jmp	(a1)				; AS we cannot use RTS (and bsr/jsr) jump here after we are done.
 

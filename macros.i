@@ -79,23 +79,30 @@ ENDM
 SENDSERIAL: MACRO
 
 .waitloop\@:
+
+	sub.l	#1,\2				; count down timeout value
+	cmp.l	#0,\2				; if 0, timeout.
+	beq	.endloop\@
+
 	btst #7,mfp_tsr
 	beq  .waitloop\@
 	move.b	\1,mfp_udr
-
+.endloop\@:
 ENDM
 
 KPRINT: MACRO
 
 	lea		\1,a0
-	clr.l	d2				; Clear d0
+	clr.l	d7				; Clear d7
 .\@loop:
-	move.b	(a0)+,d2
+	move.b	(a0)+,d7
 
-	cmp.b	#0,d2				; end of string?
+	cmp.b	#0,d7				; end of string?
 	beq	.\@finished				; yes
 
-	SENDSERIAL d2
+	move.l #10000,d2
+
+	SENDSERIAL d7, d2
 
 	bra	.\@loop
 .\@finished:
@@ -114,8 +121,10 @@ ENDM
 
 
 KNEWLINE: MACRO
-	SENDSERIAL #$a
-	SENDSERIAL #$d
+	move.l #10000,d2
+	SENDSERIAL #$a, d2
+    move.l #10000,d2
+	SENDSERIAL #$d, d2
 ENDM
 
 
@@ -138,9 +147,14 @@ KPRINTHEX8: MACRO
 	asl	#1,d2
 	add.l	d2,a0
 	move.b	(a0)+,d2
-	SENDSERIAL d2
+
+	move.l #10000,d7
+	SENDSERIAL d2,d7
+
 	move.b	(a0)+,d2
-	SENDSERIAL d2
+
+	move.l #10000,d7
+	SENDSERIAL d2,d7
 
 	; Resources
 	ByteHexTableResource
