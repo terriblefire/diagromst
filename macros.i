@@ -1,4 +1,11 @@
-	
+
+ROMVERSION: MACRO
+	ifne STE_ROM    ; if STE_ROM = 1
+	dc.w	$0206		; pretend we are TOS 2.06 to emulators.	
+	else
+	dc.w	$0104		; pretend we are TOS 1.06 to emulators.	
+	endc
+ENDM
 
 PUSH:	MACRO
 	movem.l a0-a6/d0-d7,-(a7)	;Store all registers in the stack
@@ -341,3 +348,5 @@ HWRegPrintByte: MACRO
 	EVEN
 .exit:
 ENDM
+
+
