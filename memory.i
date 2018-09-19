@@ -156,8 +156,7 @@ POSTDetectChipmem: MACRO
 	bclr	#31,d0
 .memloop:
 
-	move.l #1000,d7
-	SENDSERIAL #$d,d7	
+	PUTCHAR #$d,d7, #1000	
 	KPRINTS 'Addr $'
 
 	move.l	a6,d1

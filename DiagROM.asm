@@ -885,8 +885,9 @@ GetSerial:					; Reads serialport and returns first char in buffer.
 ReadSerial:					; Read serialport, and if anything there store it in the buffer
 	cmp.w	#0,SerialSpeed-V(a6)		; is serialport is disabled.  skip all serial stuff
 	beq	.exit
-        move.b  mfp_rsr,d5
-        lsl.w   #8,d5
+    
+	move.b  mfp_rsr,d5
+    lsl.w   #8,d5
 	move.b	mfp_udr,d5
 
 	move.b	OldSerial-V(a6),d6
@@ -1644,10 +1645,10 @@ rs232_out:
 	beq	.noserial
 	PUSH
 	bsr	ReadSerial
-	move.l	#$10000,d2			; Load d2 with a timeoutvariable. only test this number of times.
+						; Load d2 with a timeoutvariable. only test this number of times.
 						; IF CIA for serialport is dead we will not end up in a wait-forever-loop.
 						; and as we cannot use timers. we have to do this dirty style of coding...
-	SENDSERIAL d0,d2
+	PUTCHAR d0,d2, #$10000
 	POP
 .noserial:
 	rts
@@ -7397,11 +7398,11 @@ ForceSer:					; For debug. print stuff on serialport. if port disabled force 960
 .out:						; Send what is in d0 to serialport
 	PUSH
 
-	move.l	#10000,d2			; Load d2 with a timeoutvariable. only test this number of times.
+						; Load d2 with a timeoutvariable. only test this number of times.
 						; IF CIA for serialport is dead we will not end up in a wait-forever-loop.
 						; and as we cannot use timers. we have to do this dirty style of coding...
 
-	SENDSERIAL d0, d2
+	PUTCHAR d0, d2, #10000
 	POP
 	rts
 .noserial:
@@ -7481,10 +7482,10 @@ DumpSerial:				; This is only for PRE-Memory usage. Dumps a string to serialport
 	cmp.b	#0,d7				; end of string?
 	beq	.nomore				; yes
 
-	move.l	#10000,d2			; Load d2 with a timeoutvariable. only test this number of times.
+						; Load d2 with a timeoutvariable. only test this number of times.
 						; IF CIA for serialport is dead we will not end up in a wait-forever-loop.
 						; and as we cannot use timers. we have to do this dirty style of coding...
-	SENDSERIAL d7, d2
+	SENDSERIAL d7, d2, #10000
 	bra.s	.loop
 .nomore:
 	jmp	(a1)				; AS we cannot use RTS (and bsr/jsr) jump here after we are done.
@@ -7498,11 +7499,11 @@ DumpSerialChar:				; This is only for PRE-Memory usage. Dumps a string to serial
 	
 	clr.l	d7				; Clear d0
 	move.b	(a0)+,d7
-	move.l	#10000,d2			; Load d2 with a timeoutvariable. only test this number of times.
+	         			; Load d2 with a timeoutvariable. only test this number of times.
 						; IF CIA for serialport is dead we will not end up in a wait-forever-loop.
 						; and as we cannot use timers. we have to do this dirty style of coding...
 DumpSerialCharD7:	
-	SENDSERIAL d7, d2
+	PUTCHAR d7, d2, #10000
 .nomore:
 	jmp	(a1)				; AS we cannot use RTS (and bsr/jsr) jump here after we are done.
 

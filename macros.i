@@ -90,6 +90,29 @@ SENDSERIAL: MACRO
 .endloop\@:
 ENDM
 
+SENDMIDI: MACRO
+.waitloop\@:
+	sub.l	#1,\2				; count down timeout value
+	cmp.l	#0,\2				; if 0, timeout.
+	beq	.endloop\@
+
+	btst #1,acia_midi_ctrl
+	beq  .waitloop\@
+
+	move.b	\1,acia_midi_data
+.endloop\@:
+
+ENDM
+
+PUTCHAR: MACRO
+
+	move.l \3,\2
+	SENDSERIAL \1,\2
+	move.l \3,\2
+	SENDMIDI \1,\2
+
+ENDM
+
 KPRINT: MACRO
 
 	lea		\1,a0
@@ -100,9 +123,7 @@ KPRINT: MACRO
 	cmp.b	#0,d7				; end of string?
 	beq	.\@finished				; yes
 
-	move.l #10000,d2
-
-	SENDSERIAL d7, d2
+	PUTCHAR d7, d2, #10000
 
 	bra	.\@loop
 .\@finished:
@@ -121,10 +142,10 @@ ENDM
 
 
 KNEWLINE: MACRO
-	move.l #10000,d2
-	SENDSERIAL #$a, d2
-    move.l #10000,d2
-	SENDSERIAL #$d, d2
+
+	PUTCHAR #$a, d2, #10000
+	PUTCHAR #$d, d2, #10000
+
 ENDM
 
 
@@ -148,13 +169,11 @@ KPRINTHEX8: MACRO
 	add.l	d2,a0
 	move.b	(a0)+,d2
 
-	move.l #10000,d7
-	SENDSERIAL d2,d7
+	PUTCHAR d2,d7, #10000
 
 	move.b	(a0)+,d2
 
-	move.l #10000,d7
-	SENDSERIAL d2,d7
+	PUTCHAR d2,d7, #10000
 
 	; Resources
 	ByteHexTableResource
@@ -279,6 +298,17 @@ InitMFP: MACRO
 
 	;; mfp table resource is only defined once. 
 	MFPTableResource
+
+ENDM
+
+InitMidi: MACRO
+
+	; init the midi acia next
+    move.b    #$03,(acia_midi_ctrl).w          ; init the midi acia via master reset
+
+	; init the acia to divide by 16x clock, 8 bit data, 1 stop bit, no parity,
+	; rts low, transmitting interrupt disabled, receiving interrupt enabled
+    move.b    #$95,(acia_midi_ctrl).w
 
 ENDM
 

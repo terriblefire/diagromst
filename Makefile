@@ -27,9 +27,14 @@ runste: DiagROMSTE
 	hatari --patch-tos false --machine ste --tos DiagROMSTE.rom --memsize 0 --rs232-in /tmp/vsp --rs232-out /tmp/vsp 
 runst: DiagROMST
 	hatari --patch-tos false --machine st --tos DiagROMST.rom --memsize 0 --rs232-in /tmp/vsp --rs232-out /tmp/vsp 
+runstmidi: DiagROMST
+	hatari --patch-tos false --machine st --tos DiagROMST.rom --memsize 0 --midi-in /tmp/vsp --midi-out /tmp/vsp 
 runcart: DiagROMCart
 	hatari --patch-tos false --machine st --cartridge DiagROMCart.rom --tos tos.img --memsize 0 --rs232-in /tmp/vsp --rs232-out /tmp/vsp 
 clean:
 	rm -f DiagROM*.rom *.lst a.out *~ \#* *.o split 16bit* 32bit*
 distclean: clean
 	rm -f *~ *.txt
+release: DiagROM
+	cp 16bit_*.bin DiagROM*.rom ./bin/
+

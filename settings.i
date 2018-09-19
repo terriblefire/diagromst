@@ -23,10 +23,14 @@ v_sync	  equ $FFFF820a
 ACIA_IKBD_BASE equ $fffffc00
 ACIA_MIDI_BASE equ $fffffc04
 
+acia_midi_ctrl EQU ACIA_MIDI_BASE
+acia_midi_data EQU ACIA_MIDI_BASE+2
+
 	rsreset
 ACIA_CTRL rs.w	1
 ACIA_DATA rs.w	1
 	
+
 palette			EQU     $FFFF8240
 color0          EQU     $FFFF8240
 color1          EQU     $FF8242
