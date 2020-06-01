@@ -36,6 +36,8 @@ v_adr_h   equ $FFFF8205
 v_adr_m   equ $FFFF8207
 v_adr_l   equ $FFFF8209
 v_mode 	  equ $FFFF8260
+v_spshift equ $FFFF8266
+
 v_sync	  equ $FFFF820a
 
 ACIA_IKBD_BASE equ $fffffc00

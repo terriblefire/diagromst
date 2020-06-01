@@ -328,6 +328,30 @@ InitVideo: MACRO
 	lsr.w #8,d0 ; $00HH00MM
 	move.l d0,v_base ; load mid and high bytes of gapped 24bit address. low byte not assigned.
 	
+	ifne	FALCON_ROM
+	move.w #$003e,$ff8282 
+	move.w #$0032,$ff8284
+	move.w #$0009,$ff8286  
+	move.w #$023f,$ff8288  
+	move.w #$001c,$ff828a 
+	move.w #$0034,$ff828c  
+	move.w #$0271,$ff82a2  
+	move.w #$0265,$ff82a4 ; Vertical Border Begin (VBB)  
+	move.w #$002f,$ff82a6 ; Vertical Border End (VBE)  
+	move.w #$006f,$ff82a8 ;Vertical Display Begin (VDB)  
+	move.w #$01ff,$ff82aa ;Vertical Display End (VDE)  
+	move.w #$026b,$ff82ac ;Vertical SS (VSS)  
+	move.w #$0000,$ff820e ;Line Offset  
+	move.w #$0050,$ff8210 ;Line Width  
+	move.w #$0004,$ff82c2 ;Video Mode (VDM)  
+	move.w #$0083,$ff82c0 ;Video control (VCO)  
+	move.w #$0000,$ff8266 ;Falcon Shift Mode (SPSHIFT)  
+	move.b #$01,$ff8260 ;ST Shift Mode (STSHIFT)  
+	move.w #$0050,$ff8210 ;Line Width  
+	move.w #$0004,$ff82c2 ;Video Mode (VDM)  
+
+	endc
+
 ENDM
 
 IKBDWrite: MACRO
