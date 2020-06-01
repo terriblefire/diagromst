@@ -3,6 +3,24 @@
 
 ; A6 is ONLY to be used as a memorypointer to variables etc. so never SET a6 in the code.
 
+
+  ifnd STE_ROM 
+STE_ROM  EQU 0
+  endc
+
+  ifnd ST_ROM 
+ST_ROM  EQU 0
+  endc
+
+  ifnd FALCON_ROM 
+FALCON_ROM  EQU 0
+  endc
+
+  ifnd ST_CART 
+ST_CART  EQU 0
+  endc
+
+
 autovec_hbl 		EQU	$000068
 autovec_vbl		EQU 	$000070 
 slowcia			EQU	$FFFC06
@@ -85,12 +103,6 @@ mfp_rsr         EQU     $FFFA2B
 mfp_tsr         EQU     $FFFA2D
 mfp_udr        EQU     $FFFA2F
 
-  ifnd STE_ROM 
-STE_ROM  EQU 1
-  else 
-ST_CART EQU 0
-  endc
-
   ifne ST_CART
 rom_base equ $FA0000
 rom_size equ $20000
@@ -101,11 +113,24 @@ rom_setup equ 1
     ifne STE_ROM
 rom_base equ $E00000
 rom_size equ $40000
-    else
+rom_setup equ 1
+    endc
+  endc
+
+  ifnd rom_setup
+    ifne FALCON_ROM
+rom_base equ $E00000
+rom_size equ $80000
+rom_setup equ 1
+    endc
+  endc
+
+  ifnd rom_setup
 rom_base equ $fc0000
 rom_size equ $30000
-    endc	
-  endc
+rom_setup equ 1
+  endc	
+
 	
 LOWRESSize:	equ	40*256
 HIRESSize:	equ	80*512

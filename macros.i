@@ -1,8 +1,12 @@
 
 ROMVERSION: MACRO
-	ifne STE_ROM    ; if STE_ROM = 1
-	dc.w	$0206		; pretend we are TOS 2.06 to emulators.	
-	else
+	ifne FALCON_ROM    
+	dc.w	$0404		; pretend we are TOS 4.04 to emulators.	
+	endc
+	ifne STE_ROM
+	dc.w	$0206 ; pretend we are TOS 2.06 to emulators.	
+	endc 
+	ifne	ST_ROM
 	dc.w	$0104		; pretend we are TOS 1.06 to emulators.	
 	endc
 ENDM
